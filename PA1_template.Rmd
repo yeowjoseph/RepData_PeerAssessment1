@@ -7,19 +7,140 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r}
+library(lubridate)
+library(dplyr)
+am_data <- read.table("./activity.csv", header = TRUE, sep=",", na.strings="NA", stringsAsFactors=FALSE)
+```
 
 
 
 ## What is mean total number of steps taken per day?
 
+#### Total number of steps taken per day, ignore the missing values in the dataset.
+```{r}
+by_day <- group_by(am_data, date)
+total_steps_by_day <- summarise(by_day, total_steps=sum(steps, na.rm=TRUE))
+total_steps_by_day_df <- data.frame(total_steps_by_day)
+total_steps_by_day_df
+```
+
+#### Histogram of the total number of steps taken each day, ignore the missing values in the dataset.
+```{r}
+hist(total_steps_by_day_df$total_steps, xlab="Total number of steps taken each day",
+     main="Histogram of the total number of steps taken each day ignoring NAs")
+```
+
+#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and 0.
+```{r}
+filtered_am_data <- filter(am_data, steps!=0)
+by_day <- group_by(filtered_am_data, date)
+mean_median_steps_by_day <- summarise(by_day, 
+                                      mean_steps=mean(steps, na.rm=TRUE),
+                                      median_steps=median(steps, na.rm=TRUE))
+mean_median_steps_by_day_df <- data.frame(mean_median_steps_by_day)
+mean_median_steps_by_day_df
+```
+
 
 
 ## What is the average daily activity pattern?
 
+#### Time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis), ignore the missing values in the dataset.
+```{r}
+by_interval <- group_by(am_data, interval)
+mean_steps_by_interval <- summarise(by_interval, 
+                                    mean_steps=mean(steps, na.rm=TRUE))
+mean_steps_by_interval_df <- data.frame(mean_steps_by_interval)
+mean_steps_by_interval_df$simulated_seq <- seq(0, 1435, by=5)
+oct1 <- ymd("2012-10-01")
+oct2 <- ymd("2012-10-02")
+seq_interval <- seq(oct1, oct2, by = "5 min")
+mean_steps_by_interval_df$seq_interval <- seq_interval[1:288]
+with(mean_steps_by_interval_df, plot(seq_interval, mean_steps, type="l", 
+                                     xlab="Time of Day (HH:MM)",
+                                     ylab="Number of Steps (Mean)",
+                                     main="Average daily activity pattern"))
+```
+
+#### The 5-minute interval, on average across all the days in the dataset, which contains the maximum number of steps
+```{r}
+max_interval <- mean_steps_by_interval_df %>% filter(mean_steps == max(mean_steps))
+max_interval
+```
 
 
 ## Imputing missing values
 
+#### Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+summary(am_data)
+```
+Total number of rows with NAs is 2304 as seen in the above summary.
+
+#### Create a new dataset that is equal to the original dataset but with the missing data filled in, using the mean for that 5-minute interval. 
+The strategy is to merge the am_data dataset with the mean_steps_by_interval_df dataset using inner join on the interval key and iterate through the merged dataset replacing missing data with the mean for that 5-minute interval
+```{r}
+merged_data <- merge(am_data, mean_steps_by_interval_df, by="interval")
+replace <- function(steps, mean_steps) {
+  if(is.na(steps)) {
+    fill <- mean_steps 
+  } else {
+    fill <- steps
+  }
+  fill
+}
+filled <- mapply(replace, merged_data$steps, merged_data$mean_steps)
+filled_merged_data <- cbind(merged_data, filled)
+select_filled_merged_data <- select(filled_merged_data, interval, filled, date)
+select_filled_merged_data_by_day <- group_by(select_filled_merged_data, date)
+filled_total_steps_by_day <- summarise(select_filled_merged_data_by_day, total_steps=sum(filled, na.rm=TRUE))
+filled_total_steps_by_day_df <- data.frame(filled_total_steps_by_day)
+hist(filled_total_steps_by_day_df$total_steps, xlab="Total number of steps taken each day",
+     main="Histogram of the total number of steps taken each day with NAs replaceed")
+```
+
+#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and 0.
+```{r}
+filtered_filled_merged_data <- filter(filled_merged_data, filled!=0)
+filtered_filled_merged_data_by_day <- group_by(filtered_filled_merged_data, date)
+filtered_filled_mean_median_steps_by_day <- summarise(filtered_filled_merged_data_by_day,
+                                                      mean_steps=mean(filled, na.rm=TRUE),
+                                                      median_steps=median(filled, na.rm=TRUE))
+filtered_filled_mean_median_steps_by_day_df <- data.frame(filtered_filled_mean_median_steps_by_day)
+filtered_filled_mean_median_steps_by_day_df
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+#### Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+```{r}
+select_filled_merged_data$date <- as.Date(select_filled_merged_data$date, "%Y-%m-%d")
+isWeekend <- weekdays(select_filled_merged_data$date) %in% c('Saturday', 'Sunday')
+weekday.f <- factor(isWeekend, labels=c("weekday", "weekend"))
+select_filled_merged_data <- cbind(select_filled_merged_data, isWeekend)
+select_filled_merged_data <- cbind(select_filled_merged_data, weekday.f)
+```
+
+#### panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+```{r}
+by_weekdayF_interval <- group_by(select_filled_merged_data, weekday.f, interval)
+filled_mean_steps_by_interval <- summarise(by_weekdayF_interval,
+                                           mean_steps=mean(filled, na.rm=TRUE))
+filled_mean_steps_by_interval_df <- data.frame(filled_mean_steps_by_interval)
+oct1 <- ymd("2012-10-01")
+oct2 <- ymd("2012-10-02")
+seq_interval <- seq(oct1, oct2, by = "5 min")
+weekday <- seq_interval[1:288]
+weekend <- seq_interval[1:288]
+seq_interval <- combine(weekday, weekend)
+filled_mean_steps_by_interval_df <- cbind(filled_mean_steps_by_interval_df, seq_interval)
+library(lattice)
+time_series <- seq(oct1, oct2, by="5 hours")
+xyplot(mean_steps ~ seq_interval | weekday.f, data = filled_mean_steps_by_interval_df, layout = c(1, 2), type = "l",
+       scales=list(x=list(at=time_series, labels=format(time_series, "%H:%M"))), 
+       xlab="Time of Day (HH:MM)",
+       ylab="Number of Steps (Mean)",
+       main="Steps taken per 5-minute interval")
+```
