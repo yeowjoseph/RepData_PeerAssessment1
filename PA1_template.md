@@ -101,7 +101,7 @@ hist(total_steps_by_day_df$total_steps, xlab="Total number of steps taken each d
 
 ![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png) 
 
-#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and 0.
+#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and <u>rows with 0 step</u>.
 
 ```r
 filtered_am_data <- filter(am_data, steps!=0)
@@ -252,7 +252,7 @@ hist(filled_total_steps_by_day_df$total_steps, xlab="Total number of steps taken
 
 ![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8-1.png) 
 
-#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and 0.
+#### Mean and median of the total number of steps taken per day, replacing the missing values in the dataset with the mean for that 5-minute interval and <u>ignoring rows with 0 step</u>.
 
 ```r
 filtered_filled_merged_data <- filter(filled_merged_data, filled!=0)

@@ -31,7 +31,7 @@ hist(total_steps_by_day_df$total_steps, xlab="Total number of steps taken each d
      main="Histogram of the total number of steps taken each day ignoring NAs")
 ```
 
-#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and 0.
+#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and <u>rows with 0 step</u>.
 ```{r}
 filtered_am_data <- filter(am_data, steps!=0)
 by_day <- group_by(filtered_am_data, date)
@@ -100,7 +100,7 @@ hist(filled_total_steps_by_day_df$total_steps, xlab="Total number of steps taken
      main="Histogram of the total number of steps taken each day with NAs replaceed")
 ```
 
-#### Mean and median of the total number of steps taken per day, ignore the missing values in the dataset and 0.
+#### Mean and median of the total number of steps taken per day, replacing the missing values in the dataset with the mean for that 5-minute interval and <u>ignoring rows with 0 step</u>.
 ```{r}
 filtered_filled_merged_data <- filter(filled_merged_data, filled!=0)
 filtered_filled_merged_data_by_day <- group_by(filtered_filled_merged_data, date)
